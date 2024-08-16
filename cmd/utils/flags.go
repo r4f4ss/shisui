@@ -971,7 +971,7 @@ Please note that --` + MetricsHTTPFlag.Name + ` must be set to start the server.
 	PortalRPCPortFlag = &cli.IntFlag{
 		Name:     "rpc.port",
 		Usage:    "HTTP-RPC server listening port",
-		Value:    node.DefaultHTTPPort,
+		Value:    30304,
 		Category: flags.PortalNetworkCategory,
 	}
 
@@ -1034,6 +1034,68 @@ Please note that --` + MetricsHTTPFlag.Name + ` must be set to start the server.
 		Usage:    "Portal sub networks: history, beacon, state",
 		Category: flags.PortalNetworkCategory,
 		Value:    cli.NewStringSlice(portalwire.HistoryNetworkName),
+	}
+
+	PortalHTTPEnabledFlag = &cli.BoolFlag{
+		Name:     "http",
+		Usage:    "Enable the HTTP-RPC server",
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalHTTPListenAddrFlag = &cli.StringFlag{
+		Name:     "http.addr",
+		Usage:    "HTTP-RPC server listening interface",
+		Value:    node.DefaultHTTPHost,
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalHTTPPortFlag = &cli.IntFlag{
+		Name:     "http.port",
+		Usage:    "HTTP-RPC server listening port",
+		Value:    node.DefaultHTTPPort,
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalHTTPCORSDomainFlag = &cli.StringFlag{
+		Name:     "http.corsdomain",
+		Usage:    "Comma separated list of domains from which to accept cross origin requests (browser enforced)",
+		Value:    "",
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalHTTPVirtualHostsFlag = &cli.StringFlag{
+		Name:     "http.vhosts",
+		Usage:    "Comma separated list of virtual hostnames from which to accept requests (server enforced). Accepts '*' wildcard.",
+		Value:    strings.Join(node.DefaultConfig.HTTPVirtualHosts, ","),
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalHTTPPathPrefixFlag = &cli.StringFlag{
+		Name:     "http.rpcprefix",
+		Usage:    "HTTP path prefix on which JSON-RPC is served. Use '/' to serve on all paths.",
+		Value:    "",
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalRPCGlobalEVMTimeoutFlag = &cli.DurationFlag{
+		Name:     "rpc.evmtimeout",
+		Usage:    "Sets a timeout used for eth_call (0=infinite)",
+		Value:    ethconfig.Defaults.RPCEVMTimeout,
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalBatchRequestLimit = &cli.IntFlag{
+		Name:     "rpc.batch-request-limit",
+		Usage:    "Maximum number of requests in a batch",
+		Value:    node.DefaultConfig.BatchRequestLimit,
+		Category: flags.PortalNetworkApi,
+	}
+
+	PortalBatchResponseMaxSize = &cli.IntFlag{
+		Name:     "rpc.batch-response-max-size",
+		Usage:    "Maximum number of bytes returned from a batched call",
+		Value:    node.DefaultConfig.BatchResponseMaxSize,
+		Category: flags.PortalNetworkApi,
 	}
 )
 
