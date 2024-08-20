@@ -4,13 +4,11 @@ import (
 	"crypto/ecdsa"
 	"database/sql"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"path"
 	"slices"
 	"strings"
-	"time"
 
 	"os"
 
@@ -19,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/internal/flags"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/discover"
 	"github.com/ethereum/go-ethereum/p2p/discover/portalwire"
 	"github.com/ethereum/go-ethereum/p2p/enode"
@@ -28,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/portalnetwork/beacon"
 	"github.com/ethereum/go-ethereum/portalnetwork/history"
 	"github.com/ethereum/go-ethereum/portalnetwork/storage"
+	"github.com/ethereum/go-ethereum/portalnetwork/web3"
 	"github.com/ethereum/go-ethereum/rpc"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/protolambda/zrnt/eth2/configs"
@@ -61,22 +59,11 @@ var (
 		utils.PortalDataCapacityFlag,
 		utils.PortalLogLevelFlag,
 	}
-	apiRpcFlags = []cli.Flag{
-		utils.PortalHTTPEnabledFlag,
-		utils.PortalHTTPPortFlag,
-		utils.PortalHTTPListenAddrFlag,
-		utils.PortalHTTPCORSDomainFlag,
-		utils.PortalHTTPVirtualHostsFlag,
-		utils.PortalRPCGlobalEVMTimeoutFlag,
-		utils.PortalHTTPPathPrefixFlag,
-		utils.PortalBatchRequestLimit,
-		utils.PortalBatchResponseMaxSize,
-	}
 )
 
 func init() {
 	app.Action = shisui
-	app.Flags = flags.Merge(portalProtocolFlags, historyRpcFlags, apiRpcFlags)
+	app.Flags = flags.Merge(portalProtocolFlags, historyRpcFlags)
 	flags.AutoEnvVars(app.Flags, "SHISUI")
 }
 
@@ -93,8 +80,6 @@ func shisui(ctx *cli.Context) error {
 		return nil
 	}
 
-	portalNodeConfig := getPortalNodeConfig(ctx)
-
 	setDefaultLogger(*config)
 
 	addr, err := net.ResolveUDPAddr("udp", config.Protocol.ListenAddr)
@@ -106,7 +91,7 @@ func shisui(ctx *cli.Context) error {
 		return err
 	}
 
-	return startPortalRpcServer(*config, *portalNodeConfig, conn, config.RpcAddr)
+	return startPortalRpcServer(*config, conn, config.RpcAddr)
 }
 
 func setDefaultLogger(config Config) {
@@ -117,7 +102,7 @@ func setDefaultLogger(config Config) {
 	log.SetDefault(defaultLogger)
 }
 
-func startPortalRpcServer(config Config, portalConfig node.PortalApiConfig, conn discover.UDPConn, addr string) error {
+func startPortalRpcServer(config Config, conn discover.UDPConn, addr string) error {
 	discV5, localNode, err := initDiscV5(config, conn)
 	if err != nil {
 		return err
@@ -130,15 +115,10 @@ func startPortalRpcServer(config Config, portalConfig node.PortalApiConfig, conn
 		return err
 	}
 
-	if portalConfig.ApiHttpEnabled {
-
-		portalConfig.Log = log.New("protocol", "HTTP-API")
-
-		err = node.PortalNewHTTP(portalConfig)
-		if err != nil {
-			return err
-		}
-
+	api := &web3.API{}
+	err = server.RegisterName("web3", api)
+	if err != nil {
+		return err
 	}
 
 	if slices.Contains(config.Networks, portalwire.HistoryNetworkName) {
@@ -293,52 +273,6 @@ func getPortalConfig(ctx *cli.Context) (*Config, error) {
 	setPortalBootstrapNodes(ctx, config)
 	config.Networks = ctx.StringSlice(utils.PortalNetworksFlag.Name)
 	return config, nil
-}
-
-func getPortalNodeConfig(ctx *cli.Context) *node.PortalApiConfig {
-
-	portalConfig := &node.PortalApiConfig{}
-
-	if ctx.Bool(utils.PortalHTTPEnabledFlag.Name) {
-		if portalConfig.HTTPHost == "" {
-			portalConfig.HTTPHost = "127.0.0.1"
-		}
-		if ctx.IsSet(utils.PortalHTTPListenAddrFlag.Name) {
-			portalConfig.HTTPHost = ctx.String(utils.PortalHTTPListenAddrFlag.Name)
-		}
-
-	}
-	portalConfig.ApiHttpEnabled = ctx.Bool((utils.PortalHTTPEnabledFlag.Name))
-	portalConfig.HTTPPort = ctx.Int(utils.PortalHTTPPortFlag.Name)
-	portalConfig.HTTPCors = utils.SplitAndTrim(ctx.String(utils.PortalHTTPCORSDomainFlag.Name))
-	portalConfig.HTTPVirtualHosts = utils.SplitAndTrim(ctx.String(utils.PortalHTTPVirtualHostsFlag.Name))
-
-	if ctx.IsSet(utils.PortalRPCGlobalEVMTimeoutFlag.Name) {
-		HTTPTimeoutsDuration := ctx.Duration(utils.PortalRPCGlobalEVMTimeoutFlag.Name)
-		if HTTPTimeoutsDuration.Nanoseconds() == 0 {
-			portalConfig.HTTPTimeouts = rpc.HTTPTimeouts{
-				ReadTimeout:       time.Duration(math.MaxInt64),
-				ReadHeaderTimeout: time.Duration(math.MaxInt64),
-				WriteTimeout:      time.Duration(math.MaxInt64),
-				IdleTimeout:       time.Duration(math.MaxInt64),
-			}
-		} else {
-			portalConfig.HTTPTimeouts = rpc.HTTPTimeouts{
-				ReadTimeout:       time.Duration(HTTPTimeoutsDuration.Nanoseconds()),
-				ReadHeaderTimeout: time.Duration(HTTPTimeoutsDuration.Nanoseconds()),
-				WriteTimeout:      time.Duration(HTTPTimeoutsDuration.Nanoseconds()),
-				IdleTimeout:       time.Duration(HTTPTimeoutsDuration.Nanoseconds()),
-			}
-		}
-	} else {
-		portalConfig.HTTPTimeouts = rpc.DefaultHTTPTimeouts
-	}
-
-	portalConfig.HTTPPathPrefix = ctx.String(utils.PortalHTTPPathPrefixFlag.Name)
-	portalConfig.BatchRequestLimit = ctx.Int(utils.PortalBatchRequestLimit.Name)
-	portalConfig.BatchResponseMaxSize = ctx.Int(utils.PortalBatchResponseMaxSize.Name)
-
-	return portalConfig
 }
 
 func setPrivateKey(ctx *cli.Context, config *Config) error {

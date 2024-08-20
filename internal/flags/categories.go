@@ -38,7 +38,6 @@ const (
 	TestingCategory       = "TESTING"
 	DeprecatedCategory    = "ALIASED (deprecated)"
 	PortalNetworkCategory = "PORTAL NETWORK"
-	PortalNetworkApi      = "API AND CONSOLE"
 )
 
 func init() {
