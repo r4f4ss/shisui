@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"syscall"
+	"time"
 
 	"os"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/internal/flags"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/p2p/discover"
 	"github.com/ethereum/go-ethereum/p2p/discover/portalwire"
 	"github.com/ethereum/go-ethereum/p2p/enode"
@@ -78,11 +80,26 @@ var (
 		utils.PortalDataCapacityFlag,
 		utils.PortalLogLevelFlag,
 	}
+	metricsFlags = []cli.Flag{
+		utils.PortalMetricsEnabledFlag,
+		utils.PortalMetricsHTTPFlag,
+		utils.PortalMetricsPortFlag,
+		utils.PortalMetricsEnableInfluxDBFlag,
+		utils.PortalMetricsInfluxDBEndpointFlag,
+		utils.PortalMetricsInfluxDBDatabaseFlag,
+		utils.PortalMetricsInfluxDBUsernameFlag,
+		utils.PortalMetricsInfluxDBPasswordFlag,
+		utils.PortalMetricsInfluxDBTagsFlag,
+		utils.PortalMetricsEnableInfluxDBV2Flag,
+		utils.PortalMetricsInfluxDBTokenFlag,
+		utils.PortalMetricsInfluxDBBucketFlag,
+		utils.PortalMetricsInfluxDBOrganizationFlag,
+	}
 )
 
 func init() {
 	app.Action = shisui
-	app.Flags = flags.Merge(portalProtocolFlags, historyRpcFlags)
+	app.Flags = flags.Merge(portalProtocolFlags, historyRpcFlags, metricsFlags)
 	flags.AutoEnvVars(app.Flags, "SHISUI")
 }
 
@@ -95,6 +112,12 @@ func main() {
 
 func shisui(ctx *cli.Context) error {
 	setDefaultLogger(ctx.Int(utils.PortalLogLevelFlag.Name))
+
+	// Start metrics export if enabled
+	utils.PortalSetupMetrics(ctx)
+
+	// Start system runtime metrics collection
+	go metrics.CollectProcessMetrics(3 * time.Second)
 
 	config, err := getPortalConfig(ctx)
 	if err != nil {
