@@ -16,6 +16,7 @@ import (
 	"net/netip"
 	"slices"
 	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -61,6 +62,8 @@ const (
 	portalFindnodesResultLimit = 32
 
 	defaultUTPConnectTimeout = 15 * time.Second
+
+	defaultUTPTalkReqTimeout = 20 * time.Second
 
 	defaultUTPWriteTimeout = 60 * time.Second
 
@@ -166,6 +169,22 @@ func DefaultPortalProtocolConfig() *PortalProtocolConfig {
 	}
 }
 
+type mapMutex struct {
+	mutexes sync.Map
+}
+
+func (m *mapMutex) Lock(key string) {
+	value, _ := m.mutexes.LoadOrStore(key, &sync.Mutex{})
+	mtx := value.(*sync.Mutex)
+	mtx.Lock()
+}
+
+func (m *mapMutex) Unlock(key string) {
+	value, _ := m.mutexes.LoadAndDelete(key)
+	mtx := value.(*sync.Mutex)
+	mtx.Unlock()
+}
+
 type PortalProtocol struct {
 	table *Table
 
@@ -184,6 +203,7 @@ type PortalProtocol struct {
 	NetRestrict    *netutil.Netlist
 	BootstrapNodes []*enode.Node
 	conn           UDPConn
+	connMapMutex   mapMutex
 
 	validSchemes   enr.IdentityScheme
 	radiusCache    *fastcache.Cache
@@ -228,6 +248,7 @@ func NewPortalProtocol(config *PortalProtocolConfig, protocolId portalwire.Proto
 		contentQueue:   contentQueue,
 		offerQueue:     make(chan *OfferRequestWithNode, concurrentOffers),
 		conn:           conn,
+		connMapMutex:   mapMutex{},
 		DiscV5:         discV5,
 		NAT:            config.NAT,
 		clock:          config.clock,
@@ -892,6 +913,12 @@ func (p *PortalProtocol) handleUtpTalkRequest(id enode.ID, addr *net.UDPAddr, ms
 	}
 	p.Log.Trace("receive utp data", "addr", addr, "msg-length", len(msg))
 	p.packetRouter.ReceiveMessage(msg, addr)
+
+	go func() {
+		time.Sleep(defaultUTPTalkReqTimeout)
+		p.handleExpiredUtpTalkRequest(id, p.closeCtx)
+	}()
+
 	return []byte("")
 }
 
@@ -1165,6 +1192,8 @@ func (p *PortalProtocol) handleFindContent(id enode.ID, addr *net.UDPAddr, reque
 				case <-bctx.Done():
 					return
 				default:
+					p.connMapMutex.Lock(strconv.FormatUint(uint64(connIdSend), 10))
+					defer p.connMapMutex.Unlock(strconv.FormatUint(uint64(connIdSend), 10))
 					ctx, cancel := context.WithTimeout(bctx, defaultUTPConnectTimeout)
 
 					p.Log.Debug("will accept find content conn from: ", "source", addr, "connId", connId)
@@ -1234,6 +1263,45 @@ func (p *PortalProtocol) handleFindContent(id enode.ID, addr *net.UDPAddr, reque
 	}
 }
 
+func (p *PortalProtocol) handleExpiredUtpTalkRequest(id enode.ID, bctx context.Context) {
+	var err error
+	connId := p.connIdGen.GenCid(id, false)
+	connIdSend := connId.SendId()
+	var conn *utp.Conn
+	p.connMapMutex.Lock(strconv.FormatUint(uint64(connIdSend), 10))
+	defer p.connMapMutex.Unlock(strconv.FormatUint(uint64(connIdSend), 10))
+	ctx, cancel := context.WithTimeout(bctx, 0)
+	defer cancel()
+	conn, _ = p.utp.AcceptUTPContext(ctx, connIdSend)
+	if conn == nil {
+		return
+	}
+
+	defer func() {
+		p.connIdGen.Remove(connId)
+		err = conn.Close()
+		if err != nil {
+			p.Log.Error("failed to close expired utp talkReq connection", "err", err)
+			return
+		}
+	}()
+
+	for {
+		select {
+		case <-bctx.Done():
+			return
+		default:
+
+			if metrics.Enabled {
+				p.portalMetrics.utpInFailConn.Inc(1)
+			}
+			p.Log.Debug("expired utp connection handler", "connId", connIdSend)
+
+			return
+		}
+	}
+}
+
 func (p *PortalProtocol) handleOffer(id enode.ID, addr *net.UDPAddr, request *portalwire.Offer) ([]byte, error) {
 	var err error
 	contentKeyBitlist := bitfield.NewBitlist(uint64(len(request.ContentKeys)))
@@ -1291,12 +1359,14 @@ func (p *PortalProtocol) handleOffer(id enode.ID, addr *net.UDPAddr, request *po
 				if err != nil {
 					p.Log.Error("failed to close connection", "err", err)
 				}
+				p.connMapMutex.Unlock(strconv.FormatUint(uint64(connIdSend), 10))
 			}()
 			for {
 				select {
 				case <-bctx.Done():
 					return
 				default:
+					p.connMapMutex.Lock(strconv.FormatUint(uint64(connIdSend), 10))
 					ctx, cancel := context.WithTimeout(bctx, defaultUTPConnectTimeout)
 
 					p.Log.Debug("will accept offer conn from: ", "source", addr, "connId", connId)
