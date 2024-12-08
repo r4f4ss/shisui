@@ -25,7 +25,7 @@ jobs:
       - name: Build forkdiff
         uses: "docker://protolambda/forkdiff:latest"
         with:
-          args: -repo=./shisui  -fork=/github/workspace/fork.yaml -out=/github/workspace/index.html -upstream-repo=./go-ethereum
+          args: -repo=./shisui  -fork=./shisui/fork.yaml -out=/github/workspace/index.html -upstream-repo=./go-ethereum
 
       - name: Build pages
         run: |
