@@ -13,19 +13,19 @@ jobs:
       - name: Checkout shisui
         uses: actions/checkout@v3
         with:
-          path: /github/workspace/shisui
+          path: ./shisui
           fetch-depth: 1
       - name: Checkout go-ethereum
         uses: actions/checkout@v3
         with:
           repository: ethereum/go-ethereum
-          path: /github/workspace/go-ethereum
+          path: ./go-ethereum
           ref: master
           fetch-depth: 1
       - name: Build forkdiff
         uses: "docker://protolambda/forkdiff:latest"
         with:
-          args: -repo=/github/workspace  -fork=/github/workspace/fork.yaml -out=/github/workspace/index.html
+          args: -repo=./shisui  -fork=/github/workspace/fork.yaml -out=/github/workspace/index.html -upstream-repo=./go-ethereum
 
       - name: Build pages
         run: |
