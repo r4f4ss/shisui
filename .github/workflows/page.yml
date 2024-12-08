@@ -8,7 +8,6 @@ on:
 jobs:
   deploy:
     concurrency: ci-${{ github.ref }}
-    depends-on: copy-and-clone
     runs-on: ubuntu-latest
     steps:
       - name: Checkout shisui
