@@ -1,4 +1,4 @@
-title: "op-besu"  # Define the HTML page title
+title: "shisui forkdiff"  # Define the HTML page title
 footer: |  # define the footer with markdown
   Portal Network Implementation. Fork-diff overview of [shisui](https://github.com/optimism-java/shisui), a fork of [geth](https://github.com/ethereum/go-ethereum).
 base:
