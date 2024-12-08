@@ -1,0 +1,26 @@
+title: "op-besu"  # Define the HTML page title
+footer: |  # define the footer with markdown
+  Portal Network Implementation. Fork-diff overview of [shisui](https://github.com/optimism-java/shisui), a fork of [geth](https://github.com/ethereum/go-ethereum).
+base:
+  name: ethereum/go-ethereum
+  url: https://github.com/ethereum/go-ethereum
+  ref: refs/heads/master
+fork:
+  name: optimism-java/shisui
+  url: https://github.com/optimism-java/shisui
+  ref: refs/heads/portal
+def:
+  title: "shisui"
+  description: | # description in markdown
+    Portal Network Implementation. This is an overview of the changes in [shisui](https://github.com/optimism-java/shisui), a fork of [geth](https://github.com/ethereum/go-ethereum).
+
+
+
+
+# files can be ignored globally, these will be listed in a separate grayed-out section,
+# and do not count towards the total line count.
+ignore:
+  - "*.sum"
+  - ".gitignore"
+  - "fork.yaml"
+  - "README.md"
