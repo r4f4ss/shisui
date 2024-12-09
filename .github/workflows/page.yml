@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - portal
+      - gethintegration
 jobs:
   deploy:
     concurrency: ci-${{ github.ref }}
