@@ -8,7 +8,7 @@ base:
 fork:
   name: optimism-java/shisui
   url: https://github.com/optimism-java/shisui
-  ref: refs/heads/portal
+  ref: refs/heads/gethintegration
 def:
   title: "shisui"
   description: | # description in markdown
@@ -22,5 +22,6 @@ def:
 ignore:
   - "*.sum"
   - ".gitignore"
+  - "grafana/shisuiDashboard.json"
   - "fork.yaml"
   - "README.md"

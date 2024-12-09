@@ -14,6 +14,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           path: ./shisui
+          ref: gethintegration
           fetch-depth: 1
       - name: Checkout go-ethereum
         uses: actions/checkout@v3
@@ -25,13 +26,13 @@ jobs:
       - name: Build forkdiff
         uses: "docker://protolambda/forkdiff:latest"
         with:
-          args: -repo=./shisui  -fork=./shisui/fork.yaml -out=/github/workspace/index.html -upstream-repo=./go-ethereum
+          args: -repo=./shisui  -fork=./shisui/fork.yaml -out=./shisui/index.html -upstream-repo=./go-ethereum
 
       - name: Build pages
         run: |
-          mkdir -p tmp/pages
-          mv index.html tmp/pages/index.html
-          touch tmp/pages/.nojekyll
+          mkdir -p ./shisui/tmp/pages
+          mv index.html ./shisui/tmp/pages/index.html
+          touch ./shisui/tmp/pages/.nojekyll
           if [ "$GITHUB_REPOSITORY" == "optimism-java/shisui" ]; then
               echo "shisui.github.io" > tmp/pages/CNAME
           fi;
@@ -39,5 +40,5 @@ jobs:
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: tmp/pages
+          folder: ./shisui/tmp/pages
           clean: true
