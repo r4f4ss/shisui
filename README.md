@@ -1,3 +1,5 @@
+**Note:the project migrated to https://github.com/zen-eth/shisui**
+
 # Shisui
 
 ![AppVeyor Build (with branch)](https://ci.appveyor.com/api/projects/status/github/optimism-java/shisui?branch=portal&svg=true)
