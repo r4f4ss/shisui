@@ -60,8 +60,13 @@ func (p *API) BeaconStore(contentKeyHex string, contextHex string) (bool, error)
 	return p.Store(contentKeyHex, contextHex)
 }
 
+// deprecated, use BeaconPutContent instead
 func (p *API) BeaconGossip(contentKeyHex, contentHex string) (int, error) {
 	return p.Gossip(contentKeyHex, contentHex)
+}
+
+func (p *API) BeaconPutContent(contentKeyHex, contentHex string) (*discover.PutContentResult, error) {
+	return p.PutContent(contentKeyHex, contentHex)
 }
 
 func (p *API) BeaconTraceGetContent(contentKeyHex string) (*discover.TraceContentResult, error) {

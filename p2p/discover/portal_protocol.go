@@ -1861,6 +1861,19 @@ func (p *PortalProtocol) Gossip(srcNodeId *enode.ID, contentKeys [][]byte, conte
 	return len(finalGossipNodes), nil
 }
 
+// if the content is not in range, return false; else store the content and return true
+func (p *PortalProtocol) ShouldStore(contentKey []byte, content []byte) (bool, error) {
+	if !p.InRange(p.toContentId(contentKey)) {
+		return false, nil
+	}
+
+	err := p.storage.Put(contentKey, p.toContentId(contentKey), content)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (p *PortalProtocol) Distance(a, b enode.ID) enode.ID {
 	res := [32]byte{}
 	for i := range a {
