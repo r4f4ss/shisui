@@ -60,8 +60,13 @@ func (p *API) StateStore(contentKeyHex string, contextHex string) (bool, error) 
 	return p.Store(contentKeyHex, contextHex)
 }
 
+// deprecated, use StatePutContent instead
 func (p *API) StateGossip(contentKeyHex, contentHex string) (int, error) {
 	return p.Gossip(contentKeyHex, contentHex)
+}
+
+func (p *API) StatePutContent(contentKeyHex, contentHex string) (*discover.PutContentResult, error) {
+	return p.PutContent(contentKeyHex, contentHex)
 }
 
 func (p *API) StateTraceGetContent(contentKeyHex string) (*discover.TraceContentResult, error) {

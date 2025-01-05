@@ -60,8 +60,13 @@ func (p *API) HistoryStore(contentKeyHex string, contextHex string) (bool, error
 	return p.Store(contentKeyHex, contextHex)
 }
 
+// deprecated, use HistoryPutContent instead
 func (p *API) HistoryGossip(contentKeyHex, contentHex string) (int, error) {
 	return p.Gossip(contentKeyHex, contentHex)
+}
+
+func (p *API) HistoryPutContent(contentKeyHex, contentHex string) (*discover.PutContentResult, error) {
+	return p.PutContent(contentKeyHex, contentHex)
 }
 
 func (p *API) HistoryTraceGetContent(contentKeyHex string) (*discover.TraceContentResult, error) {
