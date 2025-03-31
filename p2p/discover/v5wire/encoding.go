@@ -191,6 +191,9 @@ func (c *Codec) Encode(id enode.ID, addr string, packet Packet, challenge *Whoar
 	switch {
 	case packet.Kind() == WhoareyouPacket:
 		head, err = c.encodeWhoareyou(id, packet.(*Whoareyou))
+		if err != nil {
+			c.sc.storeNewSession(id, addr, session, challenge.Node)
+		}
 	case challenge != nil:
 		// We have an unanswered challenge, send handshake.
 		head, session, err = c.encodeHandshakeHeader(id, addr, challenge)
